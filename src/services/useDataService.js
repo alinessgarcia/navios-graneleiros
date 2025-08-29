@@ -1,36 +1,55 @@
 // React hook for managing real-time data updates
 import { useState, useEffect, useCallback } from 'react'
-import { dataService } from '../services/dataService.js'
-import persistenceService from '../services/persistenceService.js'
+import { mockShipData, portData, productStats, marketStats } from './mockData.js'
 
 export const useDataService = (autoUpdate = true, updateInterval = 30000) => {
   const [data, setData] = useState({
     ships: [],
     ports: [],
     products: [],
-    market: {},
+    stats: {
+      totalShips: 0,
+      activePorts: 0,
+      totalCargo: 0
+    },
+    productionData: [],
     loading: true,
     error: null,
     lastUpdate: null
   })
 
-  const [isConnected, setIsConnected] = useState(true)
+  const [connectionStatus, setConnectionStatus] = useState('connected')
 
   // Load initial data
   const loadInitialData = useCallback(async () => {
     try {
       setData(prev => ({ ...prev, loading: true, error: null }))
       
-      const initialData = await dataService.refreshAllData()
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const dockedShips = mockShipData.filter(ship => ship.status === 'Atracado').length
+      const totalCargo = mockShipData.reduce((sum, ship) => {
+        const tonnage = parseFloat(ship.tonnage.replace(/[^0-9.,]/g, '').replace(',', '.'))
+        return sum + (isNaN(tonnage) ? 0 : tonnage)
+      }, 0)
       
       setData({
-        ...initialData,
+        ships: mockShipData,
+        ports: portData,
+        products: productStats,
+        stats: {
+          totalShips: mockShipData.length,
+          activePorts: portData.length,
+          totalCargo: Math.round(totalCargo / 1000) // Convert to thousands
+        },
+        productionData: productStats,
         loading: false,
         error: null,
         lastUpdate: new Date()
       })
       
-      setIsConnected(true)
+      setConnectionStatus('connected')
     } catch (error) {
       console.error('Error loading initial data:', error)
       setData(prev => ({
@@ -38,7 +57,7 @@ export const useDataService = (autoUpdate = true, updateInterval = 30000) => {
         loading: false,
         error: error.message || 'Erro ao carregar dados'
       }))
-      setIsConnected(false)
+      setConnectionStatus('disconnected')
     }
   }, [])
 
@@ -49,36 +68,15 @@ export const useDataService = (autoUpdate = true, updateInterval = 30000) => {
       ...updatedData,
       loading: false,
       error: null,
-      lastUpdate: new Date(updatedData.timestamp)
+      lastUpdate: new Date()
     }))
-    setIsConnected(true)
+    setConnectionStatus('connected')
   }, [])
 
   // Manual refresh function
-  const refresh = useCallback(async () => {
-    try {
-      setData(prev => ({ ...prev, loading: true }))
-      const refreshedData = await dataService.refreshAllData()
-      
-      setData(prev => ({
-        ...prev,
-        ...refreshedData,
-        loading: false,
-        error: null,
-        lastUpdate: new Date()
-      }))
-      
-      setIsConnected(true)
-    } catch (error) {
-      console.error('Error refreshing data:', error)
-      setData(prev => ({
-        ...prev,
-        loading: false,
-        error: error.message || 'Erro ao atualizar dados'
-      }))
-      setIsConnected(false)
-    }
-  }, [])
+  const refreshData = useCallback(async () => {
+    await loadInitialData()
+  }, [loadInitialData])
 
   // Filter ships by various criteria
   const filterShips = useCallback((criteria) => {
@@ -115,31 +113,26 @@ export const useDataService = (autoUpdate = true, updateInterval = 30000) => {
     // Load initial data
     loadInitialData()
 
-    // Subscribe to data service updates
-    const unsubscribe = dataService.subscribe(handleDataUpdate)
-
-    // Start auto-update if enabled
+    // Auto-update if enabled
+    let interval
     if (autoUpdate) {
-      dataService.startAutoUpdate(updateInterval)
+      interval = setInterval(() => {
+        loadInitialData()
+      }, updateInterval)
     }
-
-    // Start persistence service for automatic sync
-    persistenceService.startAutoSync(5 * 60 * 1000) // Sync every 5 minutes
 
     // Cleanup function
     return () => {
-      unsubscribe()
-      if (autoUpdate) {
-        dataService.stopAutoUpdate()
+      if (interval) {
+        clearInterval(interval)
       }
-      persistenceService.stopAutoSync()
     }
-  }, [loadInitialData, handleDataUpdate, autoUpdate, updateInterval])
+  }, [loadInitialData, autoUpdate, updateInterval])
 
   // Connection status monitoring
   useEffect(() => {
     const checkConnection = () => {
-      setIsConnected(navigator.onLine)
+      setConnectionStatus(navigator.onLine ? 'connected' : 'disconnected')
     }
 
     window.addEventListener('online', checkConnection)
@@ -156,32 +149,20 @@ export const useDataService = (autoUpdate = true, updateInterval = 30000) => {
     ships: data.ships,
     ports: data.ports,
     products: data.products,
-    market: data.market,
+    stats: data.stats,
+    productionData: data.productionData,
     
     // State
     loading: data.loading,
     error: data.error,
     lastUpdate: data.lastUpdate,
-    isConnected,
+    connectionStatus,
     
     // Actions
-    refresh,
+    refreshData,
     filterShips,
     getShipsByPort,
-    getProductStats,
-    
-    // Computed values
-    totalShips: data.ships.length,
-    dockedShips: data.ships.filter(ship => ship.status === 'Atracado').length,
-    scheduledShips: data.ships.filter(ship => ship.status === 'Programado').length,
-    
-    // Persistence functions
-    syncStatus: persistenceService.getSyncStatus(),
-    forceSync: persistenceService.forcSync.bind(persistenceService),
-    
-    // Data service instance (for advanced usage)
-    dataService,
-    persistenceService
+    getProductStats
   }
 }
 

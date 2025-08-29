@@ -1,6 +1,4 @@
 import React from 'react'
-import { Badge } from '@/components/ui/badge.jsx'
-import { Button } from '@/components/ui/button.jsx'
 import { Wifi, WifiOff, RefreshCw, Clock } from 'lucide-react'
 
 const ConnectionStatus = ({ 
@@ -64,20 +62,24 @@ const ConnectionStatus = ({
       </div>
       
       <div className="flex items-center space-x-2">
-        <Badge variant={getStatusColor()}>
+        <span className={`px-2 py-1 text-xs rounded ${
+          error ? 'bg-red-100 text-red-800' :
+          !isConnected ? 'bg-gray-100 text-gray-800' :
+          loading ? 'bg-yellow-100 text-yellow-800' :
+          'bg-green-100 text-green-800'
+        }`}>
           {getStatusText()}
-        </Badge>
+        </span>
         
         {error && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <button 
+            className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50"
             onClick={onRefresh}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 inline ${loading ? 'animate-spin' : ''}`} />
             Tentar Novamente
-          </Button>
+          </button>
         )}
       </div>
       

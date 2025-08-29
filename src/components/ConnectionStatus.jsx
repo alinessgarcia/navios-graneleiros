@@ -1,10 +1,8 @@
 import React from 'react'
-import { Badge } from '@/components/ui/badge.jsx'
-import { Button } from '@/components/ui/button.jsx'
 import { Wifi, WifiOff, RefreshCw, Clock } from 'lucide-react'
 
 const ConnectionStatus = ({ 
-  isConnected, 
+  status = 'connected', 
   lastUpdate, 
   loading, 
   error, 
@@ -28,21 +26,21 @@ const ConnectionStatus = ({
   }
 
   const getStatusColor = () => {
-    if (error) return 'destructive'
-    if (!isConnected) return 'secondary'
-    if (loading) return 'outline'
-    return 'default'
+    if (error) return 'bg-red-100 text-red-800 border-red-200'
+    if (status === 'disconnected') return 'bg-gray-100 text-gray-800 border-gray-200'
+    if (loading) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    return 'bg-green-100 text-green-800 border-green-200'
   }
 
   const getStatusText = () => {
     if (error) return 'Erro'
-    if (!isConnected) return 'Offline'
+    if (status === 'disconnected') return 'Offline'
     if (loading) return 'Atualizando...'
     return 'Online'
   }
 
   const getStatusIcon = () => {
-    if (error || !isConnected) return WifiOff
+    if (error || status === 'disconnected') return WifiOff
     if (loading) return RefreshCw
     return Wifi
   }
@@ -54,30 +52,29 @@ const ConnectionStatus = ({
       <div className="flex items-center space-x-2">
         <StatusIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         <div className="text-right">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-gray-600">
             {lastUpdate ? 'Última atualização' : 'Status'}
           </p>
-          <p className="text-sm font-medium text-slate-900 dark:text-white">
+          <p className="text-sm font-medium text-gray-900">
             {lastUpdate ? formatLastUpdate(lastUpdate) : getStatusText()}
           </p>
         </div>
       </div>
       
       <div className="flex items-center space-x-2">
-        <Badge variant={getStatusColor()}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor()}`}>
           {getStatusText()}
-        </Badge>
+        </span>
         
-        {error && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+        {error && onRefresh && (
+          <button 
             onClick={onRefresh}
             disabled={loading}
+            className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Tentar Novamente
-          </Button>
+          </button>
         )}
       </div>
       
@@ -87,4 +84,3 @@ const ConnectionStatus = ({
 }
 
 export default ConnectionStatus
-

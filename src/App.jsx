@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Anchor, Ship, BarChart3, Settings, LogOut, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import './App.css';
-import ShipCard from './ShipCard';
-import PortCard from './PortCard';
-import StatsCard from './StatsCard';
-import ProductChart from './ProductChart';
-import ExportMenu from './ExportMenu';
-import ConnectionStatus from './ConnectionStatus';
-import LoginPage from './LoginPage';
-import { useDataService } from './useDataService';
+import ShipCard from './components/ShipCard';
+import PortCard from './components/PortCard';
+import StatsCard from './components/StatsCard';
+import ProductChart from './components/ProductChart';
+import ExportMenu from './components/ExportMenu';
+import ConnectionStatus from './components/ConnectionStatus';
+import LoginPage from './components/LoginPage';
+import { useDataService } from './services/useDataService';
 
 function App() {
   const [activeTab, setActiveTab] = useState('ships');

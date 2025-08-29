@@ -1,103 +1,88 @@
-import React, { useState } from 'react';
-import { 
-  Download, 
-  FileSpreadsheet, 
-  FileText, 
-  Database, 
-  TrendingUp,
-  Ship,
-  MapPin,
-  BarChart3,
-  X
-} from 'lucide-react';
+import React, { useState } from 'react'
+import { Download, X, FileText, Ship, Anchor, BarChart3 } from 'lucide-react'
 
-const ExportMenu = ({ 
-  onClose, 
-  ships = [], 
-  ports = [] 
-}) => {
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportType, setExportType] = useState(null);
-
-  const handleExport = async (dataType, format) => {
-    setIsExporting(true);
-    setExportType(`${dataType}_${format}`);
-
-    try {
-      // Add a small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      let dataToExport = '';
-      let filename = '';
-
-      switch (dataType) {
-        case 'ships':
-          if (format === 'csv') {
-            const csvHeaders = 'Nome,IMO,Produto,Tonelagem,Chegada,Porto,Status,Operador,Agência\n';
-            const csvData = ships.map(ship => 
-              `"${ship.name}","${ship.imo}","${ship.product}","${ship.tonnage}","${ship.arrival}","${ship.port}","${ship.status}","${ship.operator}","${ship.agency}"`
-            ).join('\n');
-            dataToExport = csvHeaders + csvData;
-            filename = `navios_${new Date().toISOString().split('T')[0]}.csv`;
-          }
-          break;
-        case 'ports':
-          if (format === 'csv') {
-            const csvHeaders = 'Nome,Código,Estado,Atracados,Programados,Status,Eficiência\n';
-            const csvData = ports.map(port => 
-              `"${port.name}","${port.code}","${port.state}","${port.docked}","${port.scheduled}","${port.status}","${port.efficiency}"`
-            ).join('\n');
-            dataToExport = csvHeaders + csvData;
-            filename = `portos_${new Date().toISOString().split('T')[0]}.csv`;
-          }
-          break;
-        default:
-          throw new Error('Tipo de dados não reconhecido');
-      }
-
-      // Create and download file
-      const blob = new Blob([dataToExport], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Show success message
-      setTimeout(() => {
-        alert(`Dados exportados com sucesso!`);
-      }, 100);
-
-    } catch (error) {
-      console.error('Erro na exportação:', error);
-      alert('Erro ao exportar dados. Tente novamente.');
-    } finally {
-      setIsExporting(false);
-      setExportType(null);
-    }
-  };
+const ExportMenu = ({ onClose, ships, ports }) => {
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportType, setExportType] = useState('')
 
   const exportOptions = [
     {
       id: 'ships',
-      title: 'Dados de Navios',
-      description: `${ships.length} navios disponíveis`,
+      title: 'Dados dos Navios',
+      description: `${ships?.length || 0} navios disponíveis`,
       icon: Ship,
-      color: 'blue',
-      data: ships
+      data: ships || []
     },
     {
       id: 'ports',
-      title: 'Dados de Portos',
-      description: `${ports.length} portos disponíveis`,
-      icon: MapPin,
-      color: 'green',
-      data: ports
+      title: 'Dados dos Portos',
+      description: `${ports?.length || 0} portos disponíveis`,
+      icon: Anchor,
+      data: ports || []
+    },
+    {
+      id: 'dashboard',
+      title: 'Dashboard Completo',
+      description: 'Todos os dados em um arquivo',
+      icon: BarChart3,
+      data: { ships: ships || [], ports: ports || [] }
     }
-  ];
+  ]
+
+  const handleExport = async (dataType, format) => {
+    setIsExporting(true)
+    setExportType(`${dataType}_${format}`)
+
+    try {
+      const option = exportOptions.find(opt => opt.id === dataType)
+      if (!option) return
+
+      let csvContent = ''
+      let filename = ''
+
+      if (dataType === 'ships') {
+        csvContent = 'Nome,IMO,Status,Origem,Destino,Porto,Carga,Tonelagem,ETA,Progresso\n'
+        option.data.forEach(ship => {
+          csvContent += `"${ship.name}","${ship.imo}","${ship.status}","${ship.origin}","${ship.destination}","${ship.port}","${ship.cargo}","${ship.tonnage}","${ship.eta}","${ship.progress || 0}"\n`
+        })
+        filename = 'navios_graneleiros.csv'
+      } else if (dataType === 'ports') {
+        csvContent = 'Nome,Localização,Status,Navios Atracados,Capacidade,Eficiência\n'
+        option.data.forEach(port => {
+          csvContent += `"${port.name}","${port.location}","${port.status}","${port.shipsCount || 0}","${port.capacity || 'N/A'}","${port.efficiency || 'N/A'}"\n`
+        })
+        filename = 'portos_graneleiros.csv'
+      } else if (dataType === 'dashboard') {
+        csvContent = 'Tipo,Nome,Detalhes\n'
+        option.data.ships.forEach(ship => {
+          csvContent += `"Navio","${ship.name}","${ship.status} - ${ship.port}"\n`
+        })
+        option.data.ports.forEach(port => {
+          csvContent += `"Porto","${port.name}","${port.status} - ${port.location}"\n`
+        })
+        filename = 'dashboard_completo.csv'
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      setTimeout(() => {
+        setIsExporting(false)
+        setExportType('')
+      }, 1000)
+    } catch (error) {
+      console.error('Erro ao exportar:', error)
+      setIsExporting(false)
+      setExportType('')
+    }
+  }
 
   const formatOptions = [
     {
@@ -107,7 +92,7 @@ const ExportMenu = ({
       icon: FileText,
       extension: '.csv'
     }
-  ];
+  ]
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -131,11 +116,10 @@ const ExportMenu = ({
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Export Options */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exportOptions.map((option) => {
-              const IconComponent = option.icon;
-              const hasData = Array.isArray(option.data) ? option.data.length > 0 : Object.keys(option.data).length > 0;
+              const IconComponent = option.icon
+              const hasData = Array.isArray(option.data) ? option.data.length > 0 : Object.keys(option.data).length > 0
               
               return (
                 <div 
@@ -164,8 +148,8 @@ const ExportMenu = ({
                     <div className="px-4 pb-4">
                       <div className="flex flex-wrap gap-2">
                         {formatOptions.map((format) => {
-                          const FormatIcon = format.icon;
-                          const isLoading = isExporting && exportType === `${option.id}_${format.id}`;
+                          const FormatIcon = format.icon
+                          const isLoading = isExporting && exportType === `${option.id}_${format.id}`
                           
                           return (
                             <button
@@ -181,17 +165,16 @@ const ExportMenu = ({
                               )}
                               <span>{format.title}</span>
                             </button>
-                          );
+                          )
                         })}
                       </div>
                     </div>
                   )}
                 </div>
-              );
+              )
             })}
           </div>
 
-          {/* Usage Instructions */}
           <div className="bg-blue-50 rounded-lg p-4">
             <h4 className="font-medium text-sm mb-2 text-blue-900">
               Como usar os dados exportados:
@@ -204,8 +187,7 @@ const ExportMenu = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ExportMenu;
-
+export default ExportMenu
